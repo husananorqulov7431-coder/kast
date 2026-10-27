@@ -18,11 +18,6 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 
-/**
- * Fon rejimida kino uzatishni boshqaruvchi yangilangan Foreground Service.
- * - Ekranni o'chirganda ham (WakeLock) audio davom etadi.
- * - 4 xonali PIN kod orqali ulanishni qo'llab-quvvatlaydi.
- */
 class ScreenCastService : Service() {
 
     companion object {
@@ -34,12 +29,9 @@ class ScreenCastService : Service() {
         const val ACTION_STOP = "ACTION_STOP"
         const val EXTRA_RESULT_CODE = "EXTRA_RESULT_CODE"
         const val EXTRA_RESULT_DATA = "EXTRA_RESULT_DATA"
-        const val EXTRA_PIN_CODE = "EXTRA_PIN_CODE"
 
         @Volatile
         var isRunning = false
-        @Volatile
-        var currentPin = "----"
     }
 
     private var mediaProjection: MediaProjection? = null
@@ -55,10 +47,9 @@ class ScreenCastService : Service() {
         super.onCreate()
         createNotificationChannel()
 
-        // Ekranni o'chirganda ham jarayon uxlamasligi uchun WakeLock
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "KinoCast::WakeLock")
-        wakeLock?.acquire(4 * 60 * 60 * 1000L) // 4 soatgacha zaxira
+        wakeLock?.acquire(4 * 60 * 60 * 1000L)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -71,11 +62,9 @@ class ScreenCastService : Service() {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra(EXTRA_RESULT_DATA)
                 }
-                val pin = intent.getStringExtra(EXTRA_PIN_CODE) ?: "1234"
-                currentPin = pin
 
                 if (resultCode != 0 && resultData != null) {
-                    startStreaming(resultCode, resultData, pin)
+                    startStreaming(resultCode, resultData)
                 } else {
                     stopSelf()
                 }
@@ -88,8 +77,8 @@ class ScreenCastService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startStreaming(resultCode: Int, resultData: Intent, pin: String) {
-        val notification = createNotification("PIN: $pin | 16:9 kino rejimini kutilmoqda")
+    private fun startStreaming(resultCode: Int, resultData: Intent) {
+        val notification = createNotification("16:9 kino rejimini kutilmoqda")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
@@ -110,8 +99,8 @@ class ScreenCastService : Service() {
                 return
             }
 
-            // 1. PIN-kodli lokal serverni boshlash
-            streamServer = LocalStreamServer(this, 8080, 8081, pin) { clientCount ->
+            // 1. Lokal server
+            streamServer = LocalStreamServer(this, 8080, 8081) { clientCount ->
                 Log.d(TAG, "Ulangan kompyuterlar: $clientCount")
             }.apply {
                 start()
@@ -123,7 +112,7 @@ class ScreenCastService : Service() {
             @Suppress("DEPRECATION")
             windowManager.defaultDisplay.getRealMetrics(metrics)
 
-            // 3. Video kodlovchini sozlash
+            // 3. Video kodlovchi (H.264)
             videoEncoder = VideoEncoderHelper(mp, metrics.densityDpi) { data, isKeyFrame ->
                 streamServer?.broadcastVideo(data)
             }.apply {
@@ -140,15 +129,15 @@ class ScreenCastService : Service() {
                 }
             }
 
-            // 5. 16:9 Orientatsiya detektori
+            // 5. 16:9 Orientatsiya nazorati
             orientationDetector = OrientationDetector(this) { isLandscape16x9 ->
                 videoEncoder?.isLandscape16x9 = isLandscape16x9
                 streamServer?.broadcastStatus(isLandscape16x9)
 
                 val statusText = if (isLandscape16x9) {
-                    "PIN: $pin | Kino uzatilmoqda (16:9)"
+                    "🎬 Kino uzatilmoqda (16:9)"
                 } else {
-                    "PIN: $pin | Kutish rejimi (Telefonni 16:9 holatga buring)"
+                    "📱 Kutish rejimi (Telefonni 16:9 holatga buring)"
                 }
                 updateNotification(statusText)
             }.apply {
@@ -156,9 +145,9 @@ class ScreenCastService : Service() {
             }
 
             isRunning = true
-            Log.d(TAG, "KinoCast v2.0 xizmati muvaffaqiyatli ishga tushdi (PIN: $pin)")
+            Log.d(TAG, "KinoCast xizmati faol!")
         } catch (e: Exception) {
-            Log.e(TAG, "Uzatishni boshlashda xatolik: ${e.message}", e)
+            Log.e(TAG, "Xatolik: ${e.message}", e)
             stopSelf()
         }
     }
@@ -187,7 +176,6 @@ class ScreenCastService : Service() {
             wakeLock = null
 
             stopForeground(STOP_FOREGROUND_REMOVE)
-            Log.d(TAG, "KinoCast xizmati to'liq to'xtatildi va xotiradan tozalandi")
         } catch (e: Exception) {
             Log.e(TAG, "To'xtatishda xatolik: ${e.message}")
         }
@@ -200,7 +188,7 @@ class ScreenCastService : Service() {
                 "KinoCast Xizmati",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Kino uzatish xizmati holati"
+                description = "Kino uzatish holati"
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
@@ -227,7 +215,7 @@ class ScreenCastService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("🎬 KinoCast (PIN: $currentPin)")
+            .setContentTitle("🎬 KinoCast")
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_menu_slideshow)
             .setContentIntent(activityPendingIntent)

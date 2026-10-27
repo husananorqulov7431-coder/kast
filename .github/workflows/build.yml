@@ -83,18 +83,18 @@ jobs:
       - name: Generate Release Tag
         id: tag
         run: |
-          echo "tag_name=v2.1.0-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+          echo "tag_name=v3.0.0-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Publish Release with APK & EXE
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: "🎬 KinoCast v2.1 - Tuzatilgan Versiya (Paket va Runtime Xatosiz)"
+          name: "🎬 KinoCast v3.0 - Mukammal Versiya (JMuxer + Avto Ulanish)"
           body: |
-            ### 🎬 KinoCast v2.1
-            - **📱 APK Tuzatildi**: minSdk=26 (Android 8.0+ dan boshlab barcha telefonlarda paket xatoligisiz o'rnatiladi, MultiDex va v1/v2 imzolar yoqildi).
-            - **💻 EXE Tuzatildi**: 100% Self-Contained qilib yig'ildi (.NET o'rnatish umuman shart emas).
-            - **🔑 PIN Tizimi**: 4 xonali PIN orqali tez ulanish.
+            ### 🎬 KinoCast v3.0
+            - **⚡ JMuxer MediaSource**: Qora ekran muammosi butunlay yo'q qilindi. H.264 va AAC apparatli (hardware) MP4 oqimida ijro etiladi.
+            - **🚀 Avto-ulanish**: PIN-kod yoki IP yozish shart emas. Wi-Fi tochkada darhol avtomatik ulanadi.
+            - **📱 Har qanday Androidda ishlaydi**: minSdk=26, multiDex=true.
           files: |
             release_files/FilmCaster.apk
             release_files/FilmReceiver.exe

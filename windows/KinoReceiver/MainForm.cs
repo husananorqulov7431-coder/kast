@@ -11,16 +11,15 @@ namespace KinoReceiver
     {
         private WebView2 webView = null!;
         private Panel topBar = null!;
-        private TextBox txtPin = null!;
-        private TextBox txtIp = null!;
-        private Button btnConnect = null!;
-        private Button btnFullscreen = null!;
         private Label lblStatus = null!;
+        private Button btnReconnect = null!;
+        private Button btnFullscreen = null!;
         private System.Windows.Forms.Timer cursorTimer = null!;
         private Point lastMousePosition;
         private bool isFullscreen = false;
         private FormWindowState prevWindowState;
         private FormBorderStyle prevBorderStyle;
+        private string phoneIp = "172.30.121.120";
 
         public MainForm()
         {
@@ -30,119 +29,71 @@ namespace KinoReceiver
 
         private void InitializeComponent()
         {
-            this.Text = "🎬 KinoReceiver v2.0 - 16:9 Cinema Player";
+            this.Text = "🎬 KinoReceiver v3.0 - 16:9 Cinema Player";
             this.Size = new Size(1280, 750);
-            this.MinimumSize = new Size(850, 500);
+            this.MinimumSize = new Size(800, 480);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.Black;
             this.KeyPreview = true;
+
+            phoneIp = DetectGatewayIp();
 
             // Top Bar
             topBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 48,
-                BackColor = Color.FromArgb(24, 24, 24),
-                Padding = new Padding(12, 8, 12, 8)
+                Height = 44,
+                BackColor = Color.FromArgb(20, 20, 20),
+                Padding = new Padding(12, 6, 12, 6)
             };
-
-            var lblTitle = new Label
-            {
-                Text = "🎬 PIN:",
-                ForeColor = Color.FromArgb(0, 230, 118),
-                AutoSize = true,
-                Location = new Point(12, 14),
-                Font = new Font("Segoe UI", 11, FontStyle.Bold)
-            };
-
-            txtPin = new TextBox
-            {
-                Width = 90,
-                Location = new Point(65, 10),
-                MaxLength = 6,
-                BackColor = Color.FromArgb(38, 38, 38),
-                ForeColor = Color.FromArgb(0, 230, 118),
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                TextAlign = HorizontalAlignment.Center,
-                BorderStyle = BorderStyle.FixedSingle
-            };
-            txtPin.KeyPress += (s, e) =>
-            {
-                if (e.KeyChar == (char)Keys.Enter)
-                {
-                    ConnectToPhone();
-                    e.Handled = true;
-                }
-            };
-
-            var lblIp = new Label
-            {
-                Text = "IP:",
-                ForeColor = Color.Gray,
-                AutoSize = true,
-                Location = new Point(168, 15),
-                Font = new Font("Segoe UI", 9)
-            };
-
-            var detectedIp = DetectGatewayIp();
-            txtIp = new TextBox
-            {
-                Text = detectedIp,
-                Width = 125,
-                Location = new Point(190, 12),
-                BackColor = Color.FromArgb(32, 32, 32),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-
-            btnConnect = new Button
-            {
-                Text = "Ulanish",
-                Location = new Point(325, 9),
-                Width = 95,
-                Height = 30,
-                BackColor = Color.FromArgb(30, 136, 229),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnConnect.FlatAppearance.BorderSize = 0;
-            btnConnect.Click += (s, e) => ConnectToPhone();
 
             lblStatus = new Label
             {
-                Text = "PIN kiriting va Ulanishni bosing",
-                ForeColor = Color.FromArgb(255, 179, 0),
+                Text = $"🟢 Telefon bilan aloqa faol ({phoneIp})",
+                ForeColor = Color.FromArgb(0, 230, 118),
                 AutoSize = true,
-                Location = new Point(430, 15),
-                Font = new Font("Segoe UI", 9, FontStyle.Italic)
+                Location = new Point(14, 12),
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            btnReconnect = new Button
+            {
+                Text = "🔄 Qayta Ulanish",
+                Location = new Point(340, 8),
+                Width = 140,
+                Height = 28,
+                BackColor = Color.FromArgb(35, 35, 35),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9),
+                Cursor = Cursors.Hand
+            };
+            btnReconnect.FlatAppearance.BorderSize = 0;
+            btnReconnect.Click += (s, e) =>
+            {
+                phoneIp = DetectGatewayIp();
+                lblStatus.Text = $"🟢 Ulanmoqda ({phoneIp})...";
+                webView.Source = new Uri($"http://{phoneIp}:8080/");
             };
 
             btnFullscreen = new Button
             {
                 Text = "⛶ To'liq Ekran (F11)",
                 Dock = DockStyle.Right,
-                Width = 150,
-                BackColor = Color.FromArgb(40, 40, 40),
+                Width = 160,
+                BackColor = Color.FromArgb(30, 136, 229),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9),
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnFullscreen.FlatAppearance.BorderSize = 0;
             btnFullscreen.Click += (s, e) => ToggleFullscreen();
 
-            topBar.Controls.Add(lblTitle);
-            topBar.Controls.Add(txtPin);
-            topBar.Controls.Add(lblIp);
-            topBar.Controls.Add(txtIp);
-            topBar.Controls.Add(btnConnect);
             topBar.Controls.Add(lblStatus);
+            topBar.Controls.Add(btnReconnect);
             topBar.Controls.Add(btnFullscreen);
 
-            // WebView2
             webView = new WebView2
             {
                 Dock = DockStyle.Fill
@@ -160,33 +111,14 @@ namespace KinoReceiver
             try
             {
                 await webView.EnsureCoreWebView2Async();
-                txtPin.Focus();
+                phoneIp = DetectGatewayIp();
+                lblStatus.Text = $"🟢 Ulanmoqda ({phoneIp})...";
+                webView.Source = new Uri($"http://{phoneIp}:8080/");
             }
             catch (Exception ex)
             {
                 MessageBox.Show("WebView2 yuklanishida xatolik: " + ex.Message, "Xatolik", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
-        }
-
-        private void ConnectToPhone()
-        {
-            if (webView.CoreWebView2 == null) return;
-            var ip = txtIp.Text.Trim();
-            if (string.IsNullOrEmpty(ip)) ip = "192.168.43.1";
-
-            var pin = txtPin.Text.Trim();
-            if (pin.Length < 4)
-            {
-                lblStatus.Text = "Kamida 4 ta raqamdan iborat PIN kiriting!";
-                lblStatus.ForeColor = Color.FromArgb(255, 82, 82);
-                return;
-            }
-
-            lblStatus.Text = "Ulanmoqda...";
-            lblStatus.ForeColor = Color.FromArgb(0, 230, 118);
-
-            var url = $"http://{ip}:8080/?pin={Uri.EscapeDataString(pin)}";
-            webView.Source = new Uri(url);
         }
 
         private string DetectGatewayIp()
@@ -212,7 +144,7 @@ namespace KinoReceiver
                 }
             }
             catch { }
-            return "192.168.43.1";
+            return "172.30.121.120";
         }
 
         private void ToggleFullscreen()

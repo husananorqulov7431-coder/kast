@@ -17,13 +17,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.kinocast.app.databinding.ActivityMainBinding
 import java.net.NetworkInterface
-import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var isStreaming = false
-    private var generatedPin = ""
 
     private val mediaProjectionManager by lazy {
         getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -44,7 +42,7 @@ class MainActivity : AppCompatActivity() {
             if (granted) {
                 launchScreenCapture()
             } else {
-                Toast.makeText(this, "Kino ovozini yozib olish uchun ruxsat zarur!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Kino ovozini uzatish uchun ruxsat kerak!", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -53,16 +51,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Yangi 4 xonali PIN hosil qilish
-        if (generatedPin.isEmpty()) {
-            generatedPin = String.format("%04d", Random.nextInt(1000, 9999))
-        }
-        binding.tvPinCode.text = generatedPin
-
         updateIpAddress()
         checkPermissionsUI()
 
-        // Boshlash / To'xtatish tugmasi
         binding.btnToggleStream.setOnClickListener {
             if (!isStreaming) {
                 checkAndStart()
@@ -71,12 +62,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Batareya cheklovini olib tashlash tugmasi
         binding.btnBattery.setOnClickListener {
             requestIgnoreBatteryOptimization()
         }
 
-        // Ilovalar ustidan ko'rsatish ruxsati
         binding.btnOverlay.setOnClickListener {
             requestOverlayPermission()
         }
@@ -88,7 +77,6 @@ class MainActivity : AppCompatActivity() {
         checkPermissionsUI()
         if (ScreenCastService.isRunning) {
             updateUiState(true)
-            binding.tvPinCode.text = ScreenCastService.currentPin
         }
     }
 
@@ -105,7 +93,7 @@ class MainActivity : AppCompatActivity() {
             val intent = mediaProjectionManager.createScreenCaptureIntent()
             requestMediaProjection.launch(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, "Ekran yozishni boshlashda xatolik: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Xatolik: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -114,7 +102,6 @@ class MainActivity : AppCompatActivity() {
             action = ScreenCastService.ACTION_START
             putExtra(ScreenCastService.EXTRA_RESULT_CODE, resultCode)
             putExtra(ScreenCastService.EXTRA_RESULT_DATA, data)
-            putExtra(ScreenCastService.EXTRA_PIN_CODE, generatedPin)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent)
@@ -135,7 +122,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateUiState(streaming: Boolean) {
         isStreaming = streaming
         if (streaming) {
-            binding.tvStatus.text = "Uzatish Faol (16:9 kutilmoqda)"
+            binding.tvStatus.text = "🟢 Uzatish Faol (16:9 kino kutilmoqda)"
             binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.accent))
             binding.btnToggleStream.text = "⏹️ Uzatishni To'xtatish"
             binding.btnToggleStream.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
@@ -158,11 +145,10 @@ class MainActivity : AppCompatActivity() {
                     }
                     startActivity(intent)
                 } catch (e: Exception) {
-                    val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                    startActivity(fallback)
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                 }
             } else {
-                Toast.makeText(this, "Batareya cheklovi allaqachon olib tashlangan!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Batareya cheklovi olib tashlangan!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -173,7 +159,7 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
                 startActivity(intent)
             } else {
-                Toast.makeText(this, "Ilovalar ustidan ko'rsatish ruxsati berilgan!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Ilovalar ustidan ko'rsatish ruxsati bor!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -183,12 +169,9 @@ class MainActivity : AppCompatActivity() {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             if (pm.isIgnoringBatteryOptimizations(packageName)) {
                 binding.btnBattery.text = "✅ Batareya (Ruxsat bor)"
-                binding.btnBattery.setBackgroundColor(ContextCompat.getColor(this, R.color.primary_dark))
             }
-
             if (Settings.canDrawOverlays(this)) {
-                binding.btnOverlay.text = "✅ Ilovalar Ustidan (Faol)"
-                binding.btnOverlay.setBackgroundColor(ContextCompat.getColor(this, R.color.primary_dark))
+                binding.btnOverlay.text = "✅ Ilovalar Ustidan (Ruxsat bor)"
             }
         }
     }
@@ -208,13 +191,13 @@ class MainActivity : AppCompatActivity() {
                     val addr = addrs.nextElement()
                     if (!addr.isLoopbackAddress && addr.hostAddress?.contains(":") == false) {
                         val host = addr.hostAddress ?: ""
-                        if (host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.")) {
+                        if (host.startsWith("172.") || host.startsWith("192.168.") || host.startsWith("10.")) {
                             return host
                         }
                     }
                 }
             }
         } catch (e: Exception) {}
-        return "192.168.43.1"
+        return "172.30.121.120"
     }
 }
