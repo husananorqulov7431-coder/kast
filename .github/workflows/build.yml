@@ -53,9 +53,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Publish Windows Single-File EXE (Self-Contained)
+      - name: Publish Windows Single-File EXE
         run: |
-          dotnet publish windows/KinoReceiver/KinoReceiver.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o bin/publish/
+          dotnet publish windows/KinoReceiver/KinoReceiver.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o bin/publish/
 
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
@@ -83,24 +83,20 @@ jobs:
       - name: Generate Release Tag
         id: tag
         run: |
-          echo "tag_name=v1.0.0-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+          echo "tag_name=v2.0.0-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Publish Release with APK & EXE
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: "🎬 KinoCast v1.0.0 - Tayyor APK va EXE"
+          name: "🎬 KinoCast v2.0 - Yangilangan APK va EXE (PIN Tizimi)"
           body: |
-            ### 🎬 KinoCast (16:9 Cinema Streamer)
-            Ushbu relizda quyidagi tayyor fayllar mavjud:
-            - **`FilmCaster.apk`**: Android telefoningizga o'rnatiladigan ilova.
-            - **`FilmReceiver.exe`**: Windows kompyuteringizda ishga tushadigan portable pleer.
-            
-            #### Qanday ishlatiladi?
-            1. Telefonda Hotspot (Tochka) yoqing va kompyuterni unga ulang.
-            2. Telefonda **FilmCaster** ilovasini ochib **Uzatishni Boshlash** ni bosing.
-            3. Kompyuterda **FilmReceiver.exe** ni ishga tushiring.
-            4. Telefonda kinoni gorizontal (16:9) qilib qo'ying — kino darhol kompyuterda ko'rinadi!
+            ### 🎬 KinoCast v2.0 (16:9 Cinema Streamer)
+            Ushbu yangilangan relizda:
+            - **🔑 4-5 xonali PIN-kod tizimi**: Hech qanday IP yozish shart emas!
+            - **🔄 Qayta ulanish tuzatildi**: To'xtatib qayta boshlaganda qotib qolmaydi.
+            - **🛡️ Ekranni o'chirganda audio davom etadi**: WakeLock va batareya optimizatsiyasi.
+            - **🪟 Ilovalar ustidan ko'rsatish**: Boshqa pleerlar ustida qulay nazorat.
           files: |
             release_files/FilmCaster.apk
             release_files/FilmReceiver.exe

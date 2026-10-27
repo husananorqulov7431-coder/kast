@@ -12,18 +12,18 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.ByteBuffer
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
- * Telefonning Wi-Fi Hotspot tarmog'ida ishlovchi lokal server.
- * Hech qanday tashqi internet yoki harajat talab qilmaydi.
- * Port 8080: Web player (Brauzer uchun)
- * Port 8081: WebSocket stream (FilmReceiver.exe va Web player uchun)
+ * PIN-kod himoyali va qayta ulanishga chidamli lokal server.
  */
 class LocalStreamServer(
     private val context: Context,
     private val httpPort: Int = 8080,
     private val wsPort: Int = 8081,
+    val pinCode: String,
     private val onClientCountChanged: (count: Int) -> Unit
 ) {
     companion object {
@@ -34,11 +34,16 @@ class LocalStreamServer(
     }
 
     private var httpServerSocket: ServerSocket? = null
+    @Volatile
     private var isHttpRunning = false
-    private val httpExecutor = Executors.newFixedThreadPool(4)
+    private var httpExecutor = Executors.newCachedThreadPool()
 
     private var wsServer: CustomWebSocketServer? = null
     private var initialVideoConfig: ByteArray? = null
+    @Volatile
+    var isLandscape: Boolean = false
+
+    private val authenticatedClients = Collections.newSetFromMap(ConcurrentHashMap<WebSocket, Boolean>())
 
     fun setInitialVideoConfig(config: ByteArray?) {
         this.initialVideoConfig = config
@@ -52,7 +57,11 @@ class LocalStreamServer(
     private fun startHttpServer() {
         try {
             isHttpRunning = true
-            httpServerSocket = ServerSocket(httpPort)
+            httpServerSocket = ServerSocket().apply {
+                reuseAddress = true
+                bind(InetSocketAddress(httpPort))
+            }
+
             Thread {
                 while (isHttpRunning) {
                     try {
@@ -66,7 +75,7 @@ class LocalStreamServer(
                 name = "HttpServerThread"
                 start()
             }
-            Log.d(TAG, "Lokal HTTP server $httpPort portida ishga tushdi")
+            Log.d(TAG, "Lokal HTTP server $httpPort portida ishga tushdi (PIN: $pinCode)")
         } catch (e: Exception) {
             Log.e(TAG, "HTTP server ishga tushirishda xatolik: ${e.message}")
         }
@@ -78,8 +87,30 @@ class LocalStreamServer(
                 val reader = BufferedReader(InputStreamReader(s.getInputStream()))
                 val requestLine = reader.readLine() ?: return
                 val parts = requestLine.split(" ")
-                val path = if (parts.size > 1) parts[1] else "/"
+                val fullPath = if (parts.size > 1) parts[1] else "/"
+                val uriParts = fullPath.split("?")
+                val path = uriParts[0]
+                val query = if (uriParts.size > 1) uriParts[1] else ""
 
+                val out: OutputStream = s.getOutputStream()
+
+                // 1. Info endpoint (Kompyuter avtomatik kashf qilishi uchun)
+                if (path == "/info") {
+                    val json = "{\"status\":\"ok\",\"device\":\"KinoCast\",\"pinRequired\":true,\"isLandscape\":$isLandscape}"
+                    sendHttpResponse(out, 200, "application/json", json.toByteArray(Charsets.UTF_8))
+                    return
+                }
+
+                // 2. PIN tekshirish endpointi: /auth?pin=XXXX
+                if (path == "/auth") {
+                    val enteredPin = getQueryParam(query, "pin")
+                    val isMatch = (enteredPin == pinCode)
+                    val json = if (isMatch) "{\"auth\":true}" else "{\"auth\":false,\"error\":\"PIN noto'g'ri\"}"
+                    sendHttpResponse(out, if (isMatch) 200 else 401, "application/json", json.toByteArray(Charsets.UTF_8))
+                    return
+                }
+
+                // 3. Web player assetlari
                 val assetPath = if (path == "/" || path.isEmpty()) "web/index.html" else "web" + path
                 var bodyBytes: ByteArray
                 var contentType = "text/html; charset=utf-8"
@@ -94,20 +125,37 @@ class LocalStreamServer(
                     bodyBytes = getFallbackHtml().toByteArray(Charsets.UTF_8)
                 }
 
-                val out: OutputStream = s.getOutputStream()
-                val responseHeaders = "HTTP/1.1 200 OK\r\n" +
-                        "Content-Type: $contentType\r\n" +
-                        "Content-Length: ${bodyBytes.size}\r\n" +
-                        "Access-Control-Allow-Origin: *\r\n" +
-                        "Connection: close\r\n\r\n"
-
-                out.write(responseHeaders.toByteArray(Charsets.UTF_8))
-                out.write(bodyBytes)
-                out.flush()
+                sendHttpResponse(out, 200, contentType, bodyBytes)
             }
         } catch (e: Exception) {
             Log.e(TAG, "HTTP mijoziga javob berishda xatolik: ${e.message}")
         }
+    }
+
+    private fun sendHttpResponse(out: OutputStream, code: Int, contentType: String, data: ByteArray) {
+        val statusText = if (code == 200) "OK" else if (code == 401) "Unauthorized" else "Error"
+        val responseHeaders = "HTTP/1.1 $code $statusText\r\n" +
+                "Content-Type: $contentType\r\n" +
+                "Content-Length: ${data.size}\r\n" +
+                "Access-Control-Allow-Origin: *\r\n" +
+                "Connection: close\r\n\r\n"
+        out.write(responseHeaders.toByteArray(Charsets.UTF_8))
+        out.write(data)
+        out.flush()
+    }
+
+    private fun getQueryParam(query: String, paramName: String): String? {
+        val pairs = query.split("&")
+        for (pair in pairs) {
+            val idx = pair.indexOf("=")
+            if (idx > 0) {
+                val key = pair.substring(0, idx)
+                if (key == paramName) {
+                    return pair.substring(idx + 1)
+                }
+            }
+        }
+        return null
     }
 
     private fun startWebSocketServer() {
@@ -124,29 +172,42 @@ class LocalStreamServer(
 
     fun broadcastVideo(data: ByteArray) {
         val server = wsServer ?: return
-        if (server.connections.isEmpty()) return
+        if (authenticatedClients.isEmpty()) return
 
         val buffer = ByteBuffer.allocate(1 + data.size)
         buffer.put(TYPE_VIDEO)
         buffer.put(data)
         buffer.flip()
 
-        server.broadcast(buffer)
+        for (client in authenticatedClients) {
+            try {
+                if (client.isOpen) {
+                    client.send(buffer.duplicate())
+                }
+            } catch (e: Exception) {}
+        }
     }
 
     fun broadcastAudio(data: ByteArray) {
         val server = wsServer ?: return
-        if (server.connections.isEmpty()) return
+        if (authenticatedClients.isEmpty()) return
 
         val buffer = ByteBuffer.allocate(1 + data.size)
         buffer.put(TYPE_AUDIO)
         buffer.put(data)
         buffer.flip()
 
-        server.broadcast(buffer)
+        for (client in authenticatedClients) {
+            try {
+                if (client.isOpen) {
+                    client.send(buffer.duplicate())
+                }
+            } catch (e: Exception) {}
+        }
     }
 
     fun broadcastStatus(isLandscape16x9: Boolean) {
+        this.isLandscape = isLandscape16x9
         val server = wsServer ?: return
         val statusMsg = "{\"isLandscape\": $isLandscape16x9}"
         val bytes = statusMsg.toByteArray(Charsets.UTF_8)
@@ -156,7 +217,13 @@ class LocalStreamServer(
         buffer.put(bytes)
         buffer.flip()
 
-        server.broadcast(buffer)
+        for (client in authenticatedClients) {
+            try {
+                if (client.isOpen) {
+                    client.send(buffer.duplicate())
+                }
+            } catch (e: Exception) {}
+        }
     }
 
     fun stop() {
@@ -165,10 +232,12 @@ class LocalStreamServer(
             httpServerSocket?.close()
             httpServerSocket = null
             httpExecutor.shutdownNow()
+            httpExecutor = Executors.newCachedThreadPool()
 
-            wsServer?.stop()
+            authenticatedClients.clear()
+            wsServer?.stop(500)
             wsServer = null
-            Log.d(TAG, "Lokal serverlar to'xtatildi")
+            Log.d(TAG, "Lokal serverlar to'liq to'xtatildi")
         } catch (e: Exception) {
             Log.e(TAG, "Serverlarni to'xtatishda xatolik: ${e.message}")
         }
@@ -176,24 +245,68 @@ class LocalStreamServer(
 
     private inner class CustomWebSocketServer(address: InetSocketAddress) : WebSocketServer(address) {
         override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
-            Log.d(TAG, "Kompyuter ulandi: ${conn?.remoteSocketAddress}")
-            onClientCountChanged(connections.size)
+            val resourceDescriptor = handshake?.resourceDescriptor ?: ""
+            Log.d(TAG, "Yangi ulanish so'rovi: $resourceDescriptor")
 
-            initialVideoConfig?.let { config ->
-                val buffer = ByteBuffer.allocate(1 + config.size)
-                buffer.put(TYPE_VIDEO)
-                buffer.put(config)
-                buffer.flip()
-                conn?.send(buffer)
+            // Agar ulanishda ?pin=XXXX berilgan bo'lsa
+            val queryIdx = resourceDescriptor.indexOf("?")
+            var clientAuthorized = false
+            if (queryIdx >= 0) {
+                val query = resourceDescriptor.substring(queryIdx + 1)
+                val pin = getQueryParam(query, "pin")
+                if (pin == pinCode) {
+                    clientAuthorized = true
+                }
+            }
+
+            if (clientAuthorized && conn != null) {
+                authenticatedClients.add(conn)
+                Log.d(TAG, "PIN orqali kompyuter ulandi: ${conn.remoteSocketAddress}")
+                onClientCountChanged(authenticatedClients.size)
+
+                // Dastlabki video kadrni yuborish
+                initialVideoConfig?.let { config ->
+                    val buffer = ByteBuffer.allocate(1 + config.size)
+                    buffer.put(TYPE_VIDEO)
+                    buffer.put(config)
+                    buffer.flip()
+                    conn.send(buffer)
+                }
+            } else {
+                Log.d(TAG, "PIN kutilmoqda...")
             }
         }
 
         override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
-            Log.d(TAG, "Kompyuter uzildi: ${conn?.remoteSocketAddress}")
-            onClientCountChanged(connections.size)
+            if (conn != null) {
+                authenticatedClients.remove(conn)
+            }
+            onClientCountChanged(authenticatedClients.size)
         }
 
-        override fun onMessage(conn: WebSocket?, message: String?) {}
+        override fun onMessage(conn: WebSocket?, message: String?) {
+            // Agar mijoz ochilgandan keyin PIN yuborsa: {"pin": "XXXX"}
+            if (conn == null || message == null) return
+            try {
+                if (message.contains(pinCode)) {
+                    authenticatedClients.add(conn)
+                    Log.d(TAG, "Mijoz xabar orqali tasdiqlandi!")
+                    onClientCountChanged(authenticatedClients.size)
+                    initialVideoConfig?.let { config ->
+                        val buffer = ByteBuffer.allocate(1 + config.size)
+                        buffer.put(TYPE_VIDEO)
+                        buffer.put(config)
+                        buffer.flip()
+                        conn.send(buffer)
+                    }
+                    conn.send("{\"auth\": true}")
+                } else {
+                    conn.send("{\"auth\": false, \"error\": \"PIN noto'g'ri\"}")
+                    conn.close(4001, "Noto'g'ri PIN")
+                }
+            } catch (e: Exception) {}
+        }
+
         override fun onMessage(conn: WebSocket?, message: ByteBuffer?) {}
 
         override fun onError(conn: WebSocket?, ex: Exception?) {
@@ -201,7 +314,7 @@ class LocalStreamServer(
         }
 
         override fun onStart() {
-            Log.d(TAG, "WebSocket server faol")
+            Log.d(TAG, "WebSocket server muvaffaqiyatli ishga tushdi")
         }
     }
 
@@ -212,7 +325,7 @@ class LocalStreamServer(
             <head><meta charset="utf-8"><title>KinoCast</title></head>
             <body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding-top:100px;">
                 <h1>🎬 KinoCast Cinema Receiver</h1>
-                <p>Iltimos, FilmReceiver.exe ilovasidan foydalaning yoki HTML pleerni yuklang.</p>
+                <p>PIN kod: <b>$pinCode</b></p>
             </body>
             </html>
         """.trimIndent()

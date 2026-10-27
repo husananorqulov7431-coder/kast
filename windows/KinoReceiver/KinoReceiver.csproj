@@ -8,11 +8,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationTitle>KinoReceiver (16:9 Cinema)</ApplicationTitle>
     <AssemblyName>FilmReceiver</AssemblyName>
-    
-    <!-- Single File Self-Contained EXE sozlamalari (hech qanday .NET runtime talab qilmaydi) -->
+
+    <!-- .NET 8 Desktop Runtime o'rnatilgani uchun ultra ixcham va tezkor Single-File -->
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <PublishTrimmed>false</PublishTrimmed>
+    <SelfContained>false</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
