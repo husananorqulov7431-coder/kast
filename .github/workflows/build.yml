@@ -53,9 +53,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Publish Windows Single-File EXE
+      - name: Publish Windows Single-File EXE (Self-Contained)
         run: |
-          dotnet publish windows/KinoReceiver/KinoReceiver.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o bin/publish/
+          dotnet publish windows/KinoReceiver/KinoReceiver.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o bin/publish/
 
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
