@@ -9,20 +9,13 @@ android {
 
     defaultConfig {
         applicationId = "com.kinocast.app"
-        minSdk = 26 // Android 8.0+ dan boshlab barcha telefonlarni qo'llab-quvvatlaydi (Paket xatoligini yo'qotadi)
+        minSdk = 26 // Android 8.0+ dan boshlab barcha telefonlarda paket xatoligisiz o'rnatiladi
         targetSdk = 34
-        versionCode = 3
-        versionName = "2.1.0"
+        versionCode = 4
+        versionName = "2.1.1"
 
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    signingConfigs {
-        getByName("debug") {
-            v1SigningEnabled = true
-            v2SigningEnabled = true
-        }
     }
 
     buildTypes {
