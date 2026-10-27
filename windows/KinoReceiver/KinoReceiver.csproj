@@ -9,9 +9,10 @@
     <ApplicationTitle>KinoReceiver (16:9 Cinema)</ApplicationTitle>
     <AssemblyName>FilmReceiver</AssemblyName>
     
-    <!-- Single File Portable EXE sozlamalari -->
+    <!-- Single File Self-Contained EXE sozlamalari (hech qanday .NET runtime talab qilmaydi) -->
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>true</PublishTrimmed>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
