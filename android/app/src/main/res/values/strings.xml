@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">KinoCast</string>
+    <string name="title_status">Uzatish Holati</string>
+    <string name="status_stopped">Xizmat to\'xtatilgan</string>
+    <string name="status_waiting_16_9">Uzatish faol: Telefonni 16:9 (Landscape) holatga buring!</string>
+    <string name="status_streaming_active">Kino uzatilmoqda (16:9)</string>
+    <string name="btn_start">Uzatishni Boshlash</string>
+    <string name="btn_stop">To\'xtatish</string>
+    <string name="info_hotspot">Kompyuteringizni telefon tochkasiga (Hotspot) ulang.</string>
+    <string name="server_address">Kompyuter uchun manzil:</string>
+    <string name="rules_notice">Faqat 16:9 kino paytida uzatiladi. Xabarlar va bildirishnomalar ovozi o\'tmaydi!</string>
+</resources>

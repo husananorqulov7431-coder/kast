@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎬 KinoCast"
+            android:textColor="@color/text_primary"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Faqat 16:9 Kino rejimida ekranni PC ga uzatish"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <!-- Status Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeColor="#333333"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Holat:"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textAllCaps="true" />
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Kutilmoqda..."
+                    android:textColor="@color/amber"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="#2C2C2C" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Kompyuterda ulanish manzili:"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvAddress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="http://192.168.43.1:8080"
+                    android:textColor="@color/accent"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textIsSelectable="true" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Instructions Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💡 Qanday ishlaydi?"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="1. Telefoningizda Hotspot (Tochka) yoqing va noutbuk/kompyuterni unga ulang.\n2. Quyidagi 'Boshlash' tugmasini bosing.\n3. Kompyuterda 'FilmReceiver.exe' ni oching (yoki brauzerda yuqoridagi manzilni oching).\n4. Telefonni gorizontal qilib kinoni qo'ying — kino darhol kompyuterda ko'rinadi!\n\n🔒 Shaxsiy daxlsizlik: Telefon tikka turganda shaxsiy xabarlaringiz PC da KO'RINMAYDI. Bildirishnoma va qo'ng'iroq ovozlari ham mutlaqo eshitilmaydi."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="3dp" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Action Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleStream"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="28dp"
+            android:text="Uzatishni Boshlash"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:backgroundTint="@color/primary" />
+
+    </LinearLayout>
+</ScrollView>
