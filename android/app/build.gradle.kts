@@ -9,12 +9,20 @@ android {
 
     defaultConfig {
         applicationId = "com.kinocast.app"
-        minSdk = 29 // Android 10 is required for AudioPlaybackCapture
+        minSdk = 26 // Android 8.0+ dan boshlab barcha telefonlarni qo'llab-quvvatlaydi (Paket xatoligini yo'qotadi)
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "2.1.0"
 
+        multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            v1SigningEnabled = true
+            v2SigningEnabled = true
+        }
     }
 
     buildTypes {
@@ -45,7 +53,8 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("androidx.multidex:multidex:2.0.1")
 
-    // Lightweight high-performance WebSocket server (~150KB)
+    // Lightweight WebSocket server
     implementation("org.java-websocket:Java-WebSocket:1.5.6")
 }

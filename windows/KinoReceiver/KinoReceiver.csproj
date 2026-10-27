@@ -9,9 +9,10 @@
     <ApplicationTitle>KinoReceiver (16:9 Cinema)</ApplicationTitle>
     <AssemblyName>FilmReceiver</AssemblyName>
 
-    <!-- .NET 8 Desktop Runtime o'rnatilgani uchun ultra ixcham va tezkor Single-File -->
+    <!-- 100% STANDALONE SELF-CONTAINED: .NET O'RNATISH SHART EMAS -->
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
